@@ -75,6 +75,14 @@ FROM  dbo.tbl_WhoIsActive
 GO
 
 
+GO
+/****** Object:  StoredProcedure [dbo].[sp_WhoIsActive]    Script Date: 2025-06-26 07:56:04 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
 /*********************************************************************************************
 Who Is Active? v11.32 (2018-07-03)
 (C) 2007-2018, Adam Machanic
@@ -89,7 +97,7 @@ License:
 	of Who is Active?, in whole or in part, is prohibited without the author's express 
 	written consent.
 *********************************************************************************************/
-CREATE PROC [dbo].[sp_WhoIsActive]
+ALTER PROC [dbo].[sp_WhoIsActive]
 (
 --~
 	--Filters--Both inclusive and exclusive
@@ -213,229 +221,7 @@ CREATE PROC [dbo].[sp_WhoIsActive]
 	@help BIT = 0
 --~
 )
-/*
-OUTPUT COLUMNS
---------------
-Formatted/Non:	[session_id] [smallint] NOT NULL
-	Session ID (a.k.a. SPID)
 
-Formatted:		[dd hh:mm:ss.mss] [varchar](15) NULL
-Non-Formatted:	<not returned>
-	For an active request, time the query has been running
-	For a sleeping session, time since the last batch completed
-
-Formatted:		[dd hh:mm:ss.mss (avg)] [varchar](15) NULL
-Non-Formatted:	[avg_elapsed_time] [int] NULL
-	(Requires @get_avg_time option)
-	How much time has the active portion of the query taken in the past, on average?
-
-Formatted:		[physical_io] [varchar](30) NULL
-Non-Formatted:	[physical_io] [bigint] NULL
-	Shows the number of physical I/Os, for active requests
-
-Formatted:		[reads] [varchar](30) NULL
-Non-Formatted:	[reads] [bigint] NULL
-	For an active request, number of reads done for the current query
-	For a sleeping session, total number of reads done over the lifetime of the session
-
-Formatted:		[physical_reads] [varchar](30) NULL
-Non-Formatted:	[physical_reads] [bigint] NULL
-	For an active request, number of physical reads done for the current query
-	For a sleeping session, total number of physical reads done over the lifetime of the session
-
-Formatted:		[writes] [varchar](30) NULL
-Non-Formatted:	[writes] [bigint] NULL
-	For an active request, number of writes done for the current query
-	For a sleeping session, total number of writes done over the lifetime of the session
-
-Formatted:		[tempdb_allocations] [varchar](30) NULL
-Non-Formatted:	[tempdb_allocations] [bigint] NULL
-	For an active request, number of TempDB writes done for the current query
-	For a sleeping session, total number of TempDB writes done over the lifetime of the session
-
-Formatted:		[tempdb_current] [varchar](30) NULL
-Non-Formatted:	[tempdb_current] [bigint] NULL
-	For an active request, number of TempDB pages currently allocated for the query
-	For a sleeping session, number of TempDB pages currently allocated for the session
-
-Formatted:		[CPU] [varchar](30) NULL
-Non-Formatted:	[CPU] [int] NULL
-	For an active request, total CPU time consumed by the current query
-	For a sleeping session, total CPU time consumed over the lifetime of the session
-
-Formatted:		[context_switches] [varchar](30) NULL
-Non-Formatted:	[context_switches] [bigint] NULL
-	Shows the number of context switches, for active requests
-
-Formatted:		[used_memory] [varchar](30) NOT NULL
-Non-Formatted:	[used_memory] [bigint] NOT NULL
-	For an active request, total memory consumption for the current query
-	For a sleeping session, total current memory consumption
-
-Formatted:		[physical_io_delta] [varchar](30) NULL
-Non-Formatted:	[physical_io_delta] [bigint] NULL
-	(Requires @delta_interval option)
-	Difference between the number of physical I/Os reported on the first and second collections. 
-	If the request started after the first collection, the value will be NULL
-
-Formatted:		[reads_delta] [varchar](30) NULL
-Non-Formatted:	[reads_delta] [bigint] NULL
-	(Requires @delta_interval option)
-	Difference between the number of reads reported on the first and second collections. 
-	If the request started after the first collection, the value will be NULL
-
-Formatted:		[physical_reads_delta] [varchar](30) NULL
-Non-Formatted:	[physical_reads_delta] [bigint] NULL
-	(Requires @delta_interval option)
-	Difference between the number of physical reads reported on the first and second collections. 
-	If the request started after the first collection, the value will be NULL
-
-Formatted:		[writes_delta] [varchar](30) NULL
-Non-Formatted:	[writes_delta] [bigint] NULL
-	(Requires @delta_interval option)
-	Difference between the number of writes reported on the first and second collections. 
-	If the request started after the first collection, the value will be NULL
-
-Formatted:		[tempdb_allocations_delta] [varchar](30) NULL
-Non-Formatted:	[tempdb_allocations_delta] [bigint] NULL
-	(Requires @delta_interval option)
-	Difference between the number of TempDB writes reported on the first and second collections. 
-	If the request started after the first collection, the value will be NULL
-
-Formatted:		[tempdb_current_delta] [varchar](30) NULL
-Non-Formatted:	[tempdb_current_delta] [bigint] NULL
-	(Requires @delta_interval option)
-	Difference between the number of allocated TempDB pages reported on the first and second 
-	collections. If the request started after the first collection, the value will be NULL
-
-Formatted:		[CPU_delta] [varchar](30) NULL
-Non-Formatted:	[CPU_delta] [int] NULL
-	(Requires @delta_interval option)
-	Difference between the CPU time reported on the first and second collections. 
-	If the request started after the first collection, the value will be NULL
-
-Formatted:		[context_switches_delta] [varchar](30) NULL
-Non-Formatted:	[context_switches_delta] [bigint] NULL
-	(Requires @delta_interval option)
-	Difference between the context switches count reported on the first and second collections
-	If the request started after the first collection, the value will be NULL
-
-Formatted:		[used_memory_delta] [varchar](30) NULL
-Non-Formatted:	[used_memory_delta] [bigint] NULL
-	Difference between the memory usage reported on the first and second collections
-	If the request started after the first collection, the value will be NULL
-
-Formatted:		[tasks] [varchar](30) NULL
-Non-Formatted:	[tasks] [smallint] NULL
-	Number of worker tasks currently allocated, for active requests
-
-Formatted/Non:	[status] [varchar](30) NOT NULL
-	Activity status for the session (running, sleeping, etc)
-
-Formatted/Non:	[wait_info] [nvarchar](4000) NULL
-	Aggregates wait information, in the following format:
-		(Ax: Bms/Cms/Dms)E
-	A is the number of waiting tasks currently waiting on resource type E. B/C/D are wait
-	times, in milliseconds. If only one thread is waiting, its wait time will be shown as B.
-	If two tasks are waiting, each of their wait times will be shown (B/C). If three or more 
-	tasks are waiting, the minimum, average, and maximum wait times will be shown (B/C/D).
-	If wait type E is a page latch wait and the page is of a "special" type (e.g. PFS, GAM, SGAM), 
-	the page type will be identified.
-	If wait type E is CXPACKET, the nodeId from the query plan will be identified
-
-Formatted/Non:	[locks] [xml] NULL
-	(Requires @get_locks option)
-	Aggregates lock information, in XML format.
-	The lock XML includes the lock mode, locked object, and aggregates the number of requests. 
-	Attempts are made to identify locked objects by name
-
-Formatted/Non:	[tran_start_time] [datetime] NULL
-	(Requires @get_transaction_info option)
-	Date and time that the first transaction opened by a session caused a transaction log 
-	write to occur.
-
-Formatted/Non:	[tran_log_writes] [nvarchar](4000) NULL
-	(Requires @get_transaction_info option)
-	Aggregates transaction log write information, in the following format:
-	A:wB (C kB)
-	A is a database that has been touched by an active transaction
-	B is the number of log writes that have been made in the database as a result of the transaction
-	C is the number of log kilobytes consumed by the log records
-
-Formatted:		[open_tran_count] [varchar](30) NULL
-Non-Formatted:	[open_tran_count] [smallint] NULL
-	Shows the number of open transactions the session has open
-
-Formatted:		[sql_command] [xml] NULL
-Non-Formatted:	[sql_command] [nvarchar](max) NULL
-	(Requires @get_outer_command option)
-	Shows the "outer" SQL command, i.e. the text of the batch or RPC sent to the server, 
-	if available
-
-Formatted:		[sql_text] [xml] NULL
-Non-Formatted:	[sql_text] [nvarchar](max) NULL
-	Shows the SQL text for active requests or the last statement executed
-	for sleeping sessions, if available in either case.
-	If @get_full_inner_text option is set, shows the full text of the batch.
-	Otherwise, shows only the active statement within the batch.
-	If the query text is locked, a special timeout message will be sent, in the following format:
-		<timeout_exceeded />
-	If an error occurs, an error message will be sent, in the following format:
-		<error message="message" />
-
-Formatted/Non:	[query_plan] [xml] NULL
-	(Requires @get_plans option)
-	Shows the query plan for the request, if available.
-	If the plan is locked, a special timeout message will be sent, in the following format:
-		<timeout_exceeded />
-	If an error occurs, an error message will be sent, in the following format:
-		<error message="message" />
-
-Formatted/Non:	[blocking_session_id] [smallint] NULL
-	When applicable, shows the blocking SPID
-
-Formatted:		[blocked_session_count] [varchar](30) NULL
-Non-Formatted:	[blocked_session_count] [smallint] NULL
-	(Requires @find_block_leaders option)
-	The total number of SPIDs blocked by this session,
-	all the way down the blocking chain.
-
-Formatted:		[percent_complete] [varchar](30) NULL
-Non-Formatted:	[percent_complete] [real] NULL
-	When applicable, shows the percent complete (e.g. for backups, restores, and some rollbacks)
-
-Formatted/Non:	[host_name] [sysname] NOT NULL
-	Shows the host name for the connection
-
-Formatted/Non:	[login_name] [sysname] NOT NULL
-	Shows the login name for the connection
-
-Formatted/Non:	[database_name] [sysname] NULL
-	Shows the connected database
-
-Formatted/Non:	[program_name] [sysname] NULL
-	Shows the reported program/application name
-
-Formatted/Non:	[additional_info] [xml] NULL
-	(Requires @get_additional_info option)
-	Returns additional non-performance-related session/request information
-	If the script finds a SQL Agent job running, the name of the job and job step will be reported
-	If @get_task_info = 2 and the script finds a lock wait, the locked object will be reported
-
-Formatted/Non:	[start_time] [datetime] NOT NULL
-	For active requests, shows the time the request started
-	For sleeping sessions, shows the time the last batch completed
-
-Formatted/Non:	[login_time] [datetime] NOT NULL
-	Shows the time that the session connected
-
-Formatted/Non:	[request_id] [int] NULL
-	For active requests, shows the request_id
-	Should be 0 unless MARS is being used
-
-Formatted/Non:	[collection_time] [datetime] NOT NULL
-	Time that this script's final SELECT ran
-*/
 AS
 BEGIN;
 	SET NOCOUNT ON; 
@@ -443,7 +229,7 @@ BEGIN;
 	SET QUOTED_IDENTIFIER ON;
 	SET ANSI_PADDING ON;
 	SET CONCAT_NULL_YIELDS_NULL ON;
-	SET ANSI_WARNINGS OFF; --modified -Constantine Leshkov for message reducing
+	SET ANSI_WARNINGS off; --modified -Constantine Leshkov for message reducing
 	SET NUMERIC_ROUNDABORT OFF;
 	SET ARITHABORT ON;
 
@@ -3548,7 +3334,7 @@ BEGIN;
 		BEGIN;	
 			DECLARE @i INT;
 			SET @i = 2147483647;
-
+			 SET ANSI_WARNINGS ON; 
 			UPDATE s
 			SET
 				tran_start_time =
@@ -3715,6 +3501,7 @@ BEGIN;
 				s.session_id = x.session_id
 				AND s.request_id = x.request_id
 			OPTION (OPTIMIZE FOR (@i = 1));
+			SET ANSI_WARNINGS OFF;  
 		END;
 
 		--Variables for text and plan collection
@@ -5339,107 +5126,3 @@ BEGIN;
 		N'@schema VARCHAR(MAX) OUTPUT',
 		@schema OUTPUT;
 END;
-GO
-
-
-
-USE [msdb]
-GO
-
-
-BEGIN TRANSACTION
-DECLARE @ReturnCode INT
-SELECT @ReturnCode = 0
-
-IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'Data Collector' AND category_class=1)
-BEGIN
-EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'Data Collector'
-IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
-
-END
-
-DECLARE @jobId BINARY(16)
-EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'sp_whoisactive_loop', 
-		@enabled=1, 
-		@notify_level_eventlog=0, 
-		@notify_level_email=0, 
-		@notify_level_netsend=0, 
-		@notify_level_page=0, 
-		@delete_level=0, 
-		@description=N'No description available.', 
-		@category_name=N'Data Collector', 
-		@owner_login_name=N'sa', @job_id = @jobId OUTPUT
-IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
-
-EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'loop', 
-		@step_id=1, 
-		@cmdexec_success_code=0, 
-		@on_success_action=1, 
-		@on_success_step_id=0, 
-		@on_fail_action=2, 
-		@on_fail_step_id=0, 
-		@retry_attempts=0, 
-		@retry_interval=0, 
-		@os_run_priority=0, @subsystem=N'TSQL', 
-		@command=N'declare @i int=0,@txtMessage nvarchar(500),@tbSize numeric(36,2)=0
-,@maxTbSizeMb numeric(36,2)=200
- 
-while (1=1)
-begin
-                set @i=@i+1
--- check and delete old records
-                select @tbSize= CAST(ROUND(((SUM(au.total_pages) * 8) / 1024.00), 2) AS NUMERIC(36, 2)) --AS [Table size (MB)]
-                FROM sys.schemas s
-                JOIN sys.tables t ON s.schema_id = t.schema_id
-                JOIN sys.partitions p ON t.object_id = p.object_id
-                JOIN sys.allocation_units au ON p.partition_id = au.container_id
-                Where t.name = ''tbl_WhoIsActive''
-                GROUP BY s.name, t.name, t.type_desc
---delete 10% old records if table size > than @maxTbSizeMb
-                if @tbSize>@maxTbSizeMb
-                begin
-                               delete top (10) percent from tbl_WhoIsActive
-                               set @txtMessage=''!-----deleted --------- ''+ cast(@@ROWCOUNT as nvarchar)  +''  '' + convert(varchar(5),getdate(),108)
-                               raiserror (@txtMessage,0,1) with nowait
-                               ALTER INDEX [PK_tbl_WhoIsActive] ON [dbo].[tbl_WhoIsActive] REBUILD PARTITION = ALL WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON)
-                end
--- fill
-                EXEC sp_WhoIsActive  @format_output = 0, @destination_table = tbl_WhoIsActive
-                -- print result
-                set @txtMessage=''step '' + cast(@i as nvarchar) +'' | rows ''+ cast(@@ROWCOUNT as nvarchar)+'' | at ''+convert(varchar(100),getdate(),120)+'' | size ''+ cast(@tbSize as nvarchar)
-                raiserror (@txtMessage,0,1) with nowait
- -- delay
-                waitfor delay''00:00:30''
--- break task at 00:59 for new task starting
-                if (convert(varchar(5),getdate(),108)=''00:59'') break
- 
-end', 
-		@database_name=N'adminTools', 
-		@flags=8
-IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
-EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
-IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
-EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'10min', 
-		@enabled=1, 
-		@freq_type=4, 
-		@freq_interval=1, 
-		@freq_subday_type=4, 
-		@freq_subday_interval=10, 
-		@freq_relative_interval=0, 
-		@freq_recurrence_factor=0, 
-		@active_start_date=20231106, 
-		@active_end_date=99991231, 
-		@active_start_time=0, 
-		@active_end_time=235959, 
-		@schedule_uid=N'125adfdd-cf19-1973-8051-7e110400c4acf'
-IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
-EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
-IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
-COMMIT TRANSACTION
-GOTO EndSave
-QuitWithRollback:
-    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
-EndSave:
-GO
-
-
