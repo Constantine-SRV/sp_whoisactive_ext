@@ -1098,7 +1098,7 @@ BEGIN;
 				SELECT
 					sp.spid AS session_id,
 					CASE sp.status
-						WHEN 'sleeping' THEN CONVERT(INT, 0)
+						WHEN 'sleeping' THEN TRY_CONVERT(INT, 0)
 						ELSE sp.request_id
 					END AS request_id,
 					CASE sp.status
@@ -1139,8 +1139,8 @@ BEGIN;
 									WHEN 'session' THEN
 										CASE
 											WHEN
-												CONVERT(SMALLINT, @filter) = 0
-												OR sp.spid = CONVERT(SMALLINT, @filter)
+												TRY_CONVERT(SMALLINT, @filter) = 0
+												OR sp.spid = TRY_CONVERT(SMALLINT, @filter)
 													THEN 1
 											ELSE 0
 										END
@@ -1175,7 +1175,7 @@ BEGIN;
 								CASE @not_filter_type
 									WHEN 'session' THEN
 										CASE
-											WHEN sp.spid = CONVERT(SMALLINT, @not_filter) THEN 1
+											WHEN sp.spid = TRY_CONVERT(SMALLINT, @not_filter) THEN 1
 											ELSE 0
 										END
 									WHEN 'program' THEN
@@ -1253,9 +1253,7 @@ BEGIN;
 								ELSE '.' + tl.resource_subtype
 							END AS resource_type,
 						COALESCE(DB_NAME(tl.resource_database_id), N'(null)') AS database_name,
-						CONVERT
-						(
-							INT,
+						TRY_CONVERT(INT,
 							CASE
 								WHEN tl.resource_type = 'OBJECT' THEN tl.resource_associated_entity_id
 								WHEN tl.resource_description LIKE '%object_id = %' THEN
@@ -1278,18 +1276,14 @@ BEGIN;
 								ELSE NULL
 							END
 						) AS object_id,
-						CONVERT
-						(
-							INT,
+						TRY_CONVERT(INT,
 							CASE 
-								WHEN tl.resource_type = 'FILE' THEN CONVERT(INT, tl.resource_description)
+								WHEN tl.resource_type = 'FILE' THEN TRY_CONVERT(INT, tl.resource_description)
 								WHEN tl.resource_type IN ('PAGE', 'EXTENT', 'RID') THEN LEFT(tl.resource_description, CHARINDEX(':', tl.resource_description)-1)
 								ELSE NULL
 							END
 						) AS file_id,
-						CONVERT
-						(
-							INT,
+						TRY_CONVERT(INT,
 							CASE
 								WHEN tl.resource_type IN ('PAGE', 'EXTENT', 'RID') THEN 
 									SUBSTRING
@@ -1317,9 +1311,7 @@ BEGIN;
 							WHEN tl.resource_type = 'ALLOCATION_UNIT' THEN tl.resource_associated_entity_id
 							ELSE NULL
 						END AS allocation_unit_id,
-						CONVERT
-						(
-							INT,
+						TRY_CONVERT(INT,
 							CASE
 								WHEN
 									/*TODO: Deal with server principals*/ 
@@ -1344,9 +1336,7 @@ BEGIN;
 								ELSE NULL
 							END 
 						) AS index_id,
-						CONVERT
-						(
-							INT,
+						TRY_CONVERT(INT,
 							CASE
 								WHEN tl.resource_description LIKE '%schema_id = %' THEN
 									(
@@ -1368,9 +1358,7 @@ BEGIN;
 								ELSE NULL
 							END 
 						) AS schema_id,
-						CONVERT
-						(
-							INT,
+						TRY_CONVERT(INT,
 							CASE
 								WHEN tl.resource_description LIKE '%principal_id = %' THEN
 									(
@@ -1736,7 +1724,7 @@ BEGIN;
 								sp2.spid AS session_id,
 								CASE sp2.status
 									WHEN ''sleeping'' THEN
-										CONVERT(INT, 0)
+										TRY_CONVERT(INT, 0)
 									ELSE
 										sp2.request_id
 								END AS request_id,
@@ -1797,23 +1785,23 @@ BEGIN;
 							(
 								SELECT TOP(@i)
 									session_id,
-									CONVERT(INT, NULL) AS queue_id,
-									CONVERT(INT, NULL) AS database_id
+									TRY_CONVERT(INT, NULL) AS queue_id,
+									TRY_CONVERT(INT, NULL) AS database_id
 								FROM @blockers
 
 								UNION ALL
 
 								SELECT TOP(@i)
-									CONVERT(SMALLINT, 0),
-									CONVERT(INT, NULL) AS queue_id,
-									CONVERT(INT, NULL) AS database_id
+									TRY_CONVERT(SMALLINT, 0),
+									TRY_CONVERT(INT, NULL) AS queue_id,
+									TRY_CONVERT(INT, NULL) AS database_id
 								WHERE
 									@blocker = 0
 
 								UNION ALL
 
 								SELECT TOP(@i)
-									CONVERT(SMALLINT, spid),
+									TRY_CONVERT(SMALLINT, spid),
 									queue_id,
 									database_id
 								FROM sys.dm_broker_activated_tasks
@@ -1844,7 +1832,7 @@ BEGIN;
 								sp2.spid,
 								CASE sp2.status
 									WHEN ''sleeping'' THEN
-										CONVERT(INT, 0)
+										TRY_CONVERT(INT, 0)
 									ELSE
 										sp2.request_id
 								END,
@@ -1864,8 +1852,8 @@ BEGIN;
 									CASE @filter_type
 										WHEN 'session' THEN
 											CASE
-												WHEN CONVERT(SMALLINT, @filter) <> 0 THEN
-													'AND sp0.session_id = CONVERT(SMALLINT, @filter) 
+												WHEN TRY_CONVERT(SMALLINT, @filter) <> 0 THEN
+													'AND sp0.session_id = TRY_CONVERT(SMALLINT, @filter) 
 													'
 												ELSE
 													''
@@ -1894,8 +1882,8 @@ BEGIN;
 									CASE @not_filter_type
 										WHEN 'session' THEN
 											CASE
-												WHEN CONVERT(SMALLINT, @not_filter) <> 0 THEN
-													'AND sp0.session_id <> CONVERT(SMALLINT, @not_filter) 
+												WHEN TRY_CONVERT(SMALLINT, @not_filter) <> 0 THEN
+													'AND sp0.session_id <> TRY_CONVERT(SMALLINT, @not_filter) 
 													'
 												ELSE
 													''
@@ -2483,34 +2471,34 @@ BEGIN;
 										CASE
 											WHEN y.wait_type LIKE N''PAGE%LATCH_%'' THEN
 												N'':'' +
-												COALESCE(DB_NAME(CONVERT(INT, LEFT(y.resource_description, CHARINDEX(N'':'', y.resource_description) - 1))), N''(null)'') +
+												COALESCE(DB_NAME(TRY_CONVERT(INT, LEFT(y.resource_description, CHARINDEX(N'':'', y.resource_description) - 1))), N''(null)'') +
 												N'':'' +
 												SUBSTRING(y.resource_description, CHARINDEX(N'':'', y.resource_description) + 1, LEN(y.resource_description) - CHARINDEX(N'':'', REVERSE(y.resource_description)) - CHARINDEX(N'':'', y.resource_description)) +
 												N''('' +
 													CASE
 														WHEN
-															CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 1 OR
-															CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) % 8088 = 0
+															TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 1 OR
+															TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) % 8088 = 0
 																THEN 
 																	N''PFS''
 														WHEN
-															CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 2 OR
-															CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) % 511232 = 0
+															TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 2 OR
+															TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) % 511232 = 0
 																THEN 
 																	N''GAM''
 														WHEN
-															CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 3 OR
-															(CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) - 1) % 511232 = 0
+															TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 3 OR
+															(TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) - 1) % 511232 = 0
 																THEN
 																	N''SGAM''
 														WHEN
-															CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 6 OR
-															(CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) - 6) % 511232 = 0 
+															TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 6 OR
+															(TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) - 6) % 511232 = 0 
 																THEN 
 																	N''DCM''
 														WHEN
-															CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 7 OR
-															(CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) - 7) % 511232 = 0 
+															TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) = 7 OR
+															(TRY_CONVERT(INT, RIGHT(y.resource_description, CHARINDEX(N'':'', REVERSE(y.resource_description)) - 1)) - 7) % 511232 = 0 
 																THEN 
 																	N''BCM''
 														ELSE 
@@ -2547,7 +2535,7 @@ BEGIN;
 					END +
 					CASE 
 						WHEN NOT (@get_avg_time = 1 AND @recursion = 1) THEN
-							'CONVERT(INT, NULL) '
+							'TRY_CONVERT(INT, NULL) '
 						ELSE 
 							'qs.total_elapsed_time / qs.execution_count '
 					END + 
@@ -2653,7 +2641,7 @@ BEGIN;
 										AND ac.name = 'group_id'
 								)
 									THEN 's.group_id'
-								ELSE 'CONVERT(INT, NULL) AS group_id'
+								ELSE 'TRY_CONVERT(INT, NULL) AS group_id'
 							END + '
 					FROM @sessions AS sp
 					LEFT OUTER LOOP JOIN sys.dm_exec_sessions AS s ON
@@ -2824,8 +2812,8 @@ BEGIN;
 												SELECT TOP(@i)
 													t.session_id,
 													t.request_id,
-													SUM(CONVERT(BIGINT, t.pending_io_count)) OVER (PARTITION BY t.session_id, t.request_id) AS physical_io,
-													SUM(CONVERT(BIGINT, t.context_switches_count)) OVER (PARTITION BY t.session_id, t.request_id) AS context_switches, 
+													SUM(TRY_CONVERT(BIGINT, t.pending_io_count)) OVER (PARTITION BY t.session_id, t.request_id) AS physical_io,
+													SUM(TRY_CONVERT(BIGINT, t.context_switches_count)) OVER (PARTITION BY t.session_id, t.request_id) AS context_switches, 
 													' +
 													CASE
 														WHEN 
@@ -2834,7 +2822,7 @@ BEGIN;
 															THEN
 																'SUM(tr.usermode_time + tr.kernel_time) OVER (PARTITION BY t.session_id, t.request_id) '
 														ELSE
-															'CONVERT(BIGINT, NULL) '
+															'TRY_CONVERT(BIGINT, NULL) '
 													END + 
 														' AS thread_CPU_snapshot, 
 													COUNT(*) OVER (PARTITION BY t.session_id, t.request_id) AS num_tasks,
@@ -2880,10 +2868,10 @@ BEGIN;
 																OR @first_collection_ms_ticks >= w0.task_bound_ms_ticks'
 														ELSE
 															'SELECT
-																CONVERT(BIGINT, NULL) AS runnable_time,
+																TRY_CONVERT(BIGINT, NULL) AS runnable_time,
 																CONVERT(VARBINARY(8), NULL) AS worker_address,
 																CONVERT(VARBINARY(8), NULL) AS thread_address,
-																CONVERT(BIGINT, NULL) AS task_bound_ms_ticks
+																TRY_CONVERT(BIGINT, NULL) AS task_bound_ms_ticks
 															WHERE
 																1 = 0'
 														END +
@@ -2918,34 +2906,34 @@ BEGIN;
 															CASE
 																WHEN wt.wait_type LIKE N''PAGE%LATCH_%'' THEN
 																	'':'' +
-																	COALESCE(DB_NAME(CONVERT(INT, LEFT(wt.resource_description, CHARINDEX(N'':'', wt.resource_description) - 1))), N''(null)'') +
+																	COALESCE(DB_NAME(TRY_CONVERT(INT, LEFT(wt.resource_description, CHARINDEX(N'':'', wt.resource_description) - 1))), N''(null)'') +
 																	N'':'' +
 																	SUBSTRING(wt.resource_description, CHARINDEX(N'':'', wt.resource_description) + 1, LEN(wt.resource_description) - CHARINDEX(N'':'', REVERSE(wt.resource_description)) - CHARINDEX(N'':'', wt.resource_description)) +
 																	N''('' +
 																		CASE
 																			WHEN
-																				CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 1 OR
-																				CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) % 8088 = 0
+																				TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 1 OR
+																				TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) % 8088 = 0
 																					THEN 
 																						N''PFS''
 																			WHEN
-																				CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 2 OR
-																				CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) % 511232 = 0 
+																				TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 2 OR
+																				TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) % 511232 = 0 
 																					THEN 
 																						N''GAM''
 																			WHEN
-																				CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 3 OR
-																				(CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) - 1) % 511232 = 0 
+																				TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 3 OR
+																				(TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) - 1) % 511232 = 0 
 																					THEN 
 																						N''SGAM''
 																			WHEN
-																				CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 6 OR
-																				(CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) - 6) % 511232 = 0 
+																				TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 6 OR
+																				(TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) - 6) % 511232 = 0 
 																					THEN 
 																						N''DCM''
 																			WHEN
-																				CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 7 OR
-																				(CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) - 7) % 511232 = 0
+																				TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) = 7 OR
+																				(TRY_CONVERT(INT, RIGHT(wt.resource_description, CHARINDEX(N'':'', REVERSE(wt.resource_description)) - 1)) - 7) % 511232 = 0
 																					THEN 
 																						N''BCM''
 																			ELSE
@@ -2975,9 +2963,7 @@ BEGIN;
 																			REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
 																				DB_NAME
 																				(
-																					CONVERT
-																					(
-																						INT,
+																					TRY_CONVERT(INT,
 																						SUBSTRING(wt.resource_description, NULLIF(CHARINDEX(N''dbid='', wt.resource_description), 0) + 5, COALESCE(NULLIF(CHARINDEX(N'' '', wt.resource_description, CHARINDEX(N''dbid='', wt.resource_description) + 5), 0), LEN(wt.resource_description) + 1) - CHARINDEX(N''dbid='', wt.resource_description) - 5)
 																					)
 																				),
@@ -4275,7 +4261,7 @@ BEGIN;
 				database_name,
 				object_id,
 				hobt_id,
-				CONVERT(INT, SUBSTRING(schema_node, CHARINDEX(' = ', schema_node) + 3, LEN(schema_node))) AS schema_id
+				TRY_CONVERT(INT, SUBSTRING(schema_node, CHARINDEX(' = ', schema_node) + 3, LEN(schema_node))) AS schema_id
 			FROM
 			(
 				SELECT
